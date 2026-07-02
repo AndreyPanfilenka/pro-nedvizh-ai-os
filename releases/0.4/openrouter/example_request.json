@@ -1,0 +1,18 @@
+{
+  "model": "openai/gpt-4o-mini",
+  "temperature": 0.2,
+  "max_tokens": 4096,
+  "response_format": {
+    "type": "json_object"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "<contents of openrouter/property_parser_prompt.md>"
+    },
+    {
+      "role": "user",
+      "content": "https://www.cian.ru/sale/flat/312345678/"
+    }
+  ]
+}

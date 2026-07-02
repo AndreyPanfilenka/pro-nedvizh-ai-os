@@ -1,0 +1,6 @@
+ID,SOURCE_URL,NOTES
+test-001,https://www.cian.ru/sale/flat/123456789/,Cian sale flat — primary smoke test
+test-002,https://www.avito.ru/moskva/kvartiry/prodam_3-k._kvartiru_1234567890,Avito Moscow apartment
+test-003,https://realty.yandex.ru/offer/1234567890/,Yandex Realty offer
+test-004,https://domclick.ru/card/sale__flat__123456789,Domclick flat card
+test-005,https://example.com/listing/not-found,Expected ERROR — invalid or unreachable URL

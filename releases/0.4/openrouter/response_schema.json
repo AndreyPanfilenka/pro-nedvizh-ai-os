@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pro-nedvizh.ai/schemas/property-parser/0.4/response.json",
+  "title": "PRO Nedvizh Property Parser Response",
+  "description": "Strict JSON response from the OpenRouter property parser (Release 0.4). AI must return ONLY this object — no markdown, no commentary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "price",
+    "currency",
+    "city",
+    "district",
+    "address",
+    "rooms",
+    "floor",
+    "total_area",
+    "living_area",
+    "kitchen_area",
+    "property_type",
+    "deal_type",
+    "photos",
+    "description_ai",
+    "telegram_text",
+    "instagram_text",
+    "reels_script",
+    "quality_score"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short headline: rooms, area, city, district"
+    },
+    "price": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Numeric listing price without currency symbols"
+    },
+    "currency": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217 currency code, e.g. RUB"
+    },
+    "city": {
+      "type": ["string", "null"],
+      "description": "City or locality name"
+    },
+    "district": {
+      "type": ["string", "null"],
+      "description": "District or micro-district"
+    },
+    "address": {
+      "type": ["string", "null"],
+      "description": "Street and building when available"
+    },
+    "rooms": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of rooms; 0 = studio"
+    },
+    "floor": {
+      "type": ["integer", "null"],
+      "description": "Floor number"
+    },
+    "total_area": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Total area in square meters"
+    },
+    "living_area": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Living area in square meters"
+    },
+    "kitchen_area": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Kitchen area in square meters"
+    },
+    "property_type": {
+      "type": "string",
+      "enum": [
+        "apartment",
+        "room",
+        "house",
+        "townhouse",
+        "land",
+        "commercial",
+        "garage",
+        "other"
+      ],
+      "description": "Normalized property category"
+    },
+    "deal_type": {
+      "type": "string",
+      "enum": ["sale", "rent", "daily_rent"],
+      "description": "Transaction type"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "description": "Direct image URL strings; empty array if none found"
+    },
+    "description_ai": {
+      "type": "string",
+      "minLength": 1,
+      "description": "2–4 paragraph factual property description in Russian"
+    },
+    "telegram_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3500,
+      "description": "Telegram post draft with price and CTA"
+    },
+    "instagram_text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Instagram caption with 5–10 hashtags"
+    },
+    "reels_script": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reels script with [0:00] timing markers"
+    },
+    "quality_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Completeness and confidence score"
+    }
+  }
+}

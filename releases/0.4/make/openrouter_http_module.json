@@ -1,0 +1,87 @@
+{
+  "name": "OpenRouter Property Parser HTTP Module",
+  "release": "0.4",
+  "_placeholders": {
+    "OPENROUTER_API_KEY": "Replace in Authorization header — Bearer token from https://openrouter.ai/keys",
+    "MODEL": "Default: openai/gpt-4o-mini",
+    "HEADERS": "Replace header values if site URL or app title changes",
+    "BODY": "Replace system prompt with contents of openrouter/property_parser_prompt.md; map {{source_url}} from upstream module",
+    "Temperature": "Default: 0.2 — lower for deterministic parsing",
+    "Max tokens": "Default: 4096 — increase if content drafts are truncated"
+  },
+  "module": "http:MakeRequest",
+  "version": 4,
+  "parameters": {
+    "handleErrors": false
+  },
+  "mapper": {
+    "url": "https://openrouter.ai/api/v1/chat/completions",
+    "method": "post",
+    "headers": [
+      {
+        "name": "Authorization",
+        "value": "Bearer OPENROUTER_API_KEY"
+      },
+      {
+        "name": "Content-Type",
+        "value": "application/json"
+      },
+      {
+        "name": "HTTP-Referer",
+        "value": "https://pro-nedvizh.ai"
+      },
+      {
+        "name": "X-Title",
+        "value": "PRO Nedvizh AI OS 0.4"
+      }
+    ],
+    "bodyType": "raw",
+    "contentType": "application/json",
+    "parseResponse": true,
+    "body": "{\n  \"model\": \"MODEL\",\n  \"temperature\": 0.2,\n  \"max_tokens\": 4096,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are the PRO Nedvizh property parser. The user message contains a single real estate listing URL. Return ONLY valid JSON. No markdown. No code fences. No commentary. No text before or after the JSON object. Never explain. Schema keys: title, price, currency, city, district, address, rooms, floor, total_area, living_area, kitchen_area, property_type (apartment|room|house|townhouse|land|commercial|garage|other), deal_type (sale|rent|daily_rent), photos (array of image URL strings), description_ai, telegram_text, instagram_text, reels_script, quality_score (integer 0-100). Use null for unknown scalars. Use [] for empty photos. Write Russian marketing copy. Do not fabricate price or address.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{source_url}}\"\n    }\n  ]\n}"
+  },
+  "metadata": {
+    "designer": {
+      "name": "OpenRouter Property Parser"
+    },
+    "notes": "Replace OPENROUTER_API_KEY, MODEL, HEADERS, BODY, Temperature, and Max tokens before activation. Full system prompt: releases/0.4/openrouter/property_parser_prompt.md. Response JSON path: choices[0].message.content. Validate against releases/0.4/openrouter/response_schema.json."
+  },
+  "_configuration_reference": {
+    "OPENROUTER_API_KEY": "Bearer OPENROUTER_API_KEY",
+    "MODEL": "openai/gpt-4o-mini",
+    "HEADERS": [
+      {
+        "Authorization": "Bearer OPENROUTER_API_KEY"
+      },
+      {
+        "Content-Type": "application/json"
+      },
+      {
+        "HTTP-Referer": "https://pro-nedvizh.ai"
+      },
+      {
+        "X-Title": "PRO Nedvizh AI OS 0.4"
+      }
+    ],
+    "BODY": {
+      "model": "MODEL",
+      "temperature": "Temperature",
+      "max_tokens": "Max tokens",
+      "response_format": {
+        "type": "json_object"
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "<property_parser_prompt.md>"
+        },
+        {
+          "role": "user",
+          "content": "{{source_url}}"
+        }
+      ]
+    },
+    "Temperature": 0.2,
+    "Max tokens": 4096
+  }
+}
