@@ -1,0 +1,358 @@
+{
+  "name": "PRO Nedvizh Build 4 — Auto Publication Pipeline",
+  "_placeholders": {
+    "GOOGLE_CONNECTION_ID": "Replace __IMTCONN__ in all Google Sheets modules after import",
+    "SPREADSHEET_ID": "Replace spreadsheetId in all Google Sheets modules",
+    "SHEET_NAME": "Replace sheetId in Watch Rows (default: INBOX)",
+    "BACKEND_URL": "Replace in HTTP module URL — e.g. https://your-server.com (no trailing slash)"
+  },
+  "flow": [
+    {
+      "id": 1,
+      "module": "google-sheets:watchRows",
+      "version": 2,
+      "parameters": {
+        "__IMTCONN__": "GOOGLE_CONNECTION_ID",
+        "from": "drive",
+        "mode": "select",
+        "limit": 1,
+        "sheetId": "SHEET_NAME",
+        "spreadsheetId": "SPREADSHEET_ID",
+        "tableFirstRow": "A1:K1",
+        "includesHeaders": true,
+        "valueRenderOption": "FORMATTED_VALUE",
+        "dateTimeRenderOption": "FORMATTED_STRING"
+      },
+      "mapper": {},
+      "filter": null,
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0,
+          "name": "1. Google Sheets Watch Rows"
+        },
+        "notes": "Polls SHEET_NAME for new or updated rows."
+      }
+    },
+    {
+      "id": 2,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "parameters": {},
+      "mapper": null,
+      "filter": null,
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0,
+          "name": "2. Router — STATUS = NEW"
+        }
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 3,
+              "module": "google-sheets:updateRow",
+              "version": 2,
+              "parameters": {
+                "__IMTCONN__": "GOOGLE_CONNECTION_ID"
+              },
+              "mapper": {
+                "mode": "map",
+                "values": {
+                  "STATUS": "PROCESSING",
+                  "UPDATED_AT": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"UTC\")}}"
+                },
+                "sheetId": "{{1.`__SHEET__`}}",
+                "rowNumber": "{{1.`__ROW_NUMBER__`}}",
+                "spreadsheetId": "SPREADSHEET_ID",
+                "tableFirstRow": "A1:K1",
+                "valueInputOption": "USER_ENTERED"
+              },
+              "filter": {
+                "name": "STATUS = NEW and SOURCE_URL present",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{1.`STATUS`}}",
+                      "b": "NEW",
+                      "o": "text:equal"
+                    },
+                    {
+                      "a": "{{1.`SOURCE_URL`}}",
+                      "b": "",
+                      "o": "text:notequal"
+                    }
+                  ]
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 0,
+                  "name": "3. Set STATUS = PROCESSING"
+                }
+              }
+            },
+            {
+              "id": 4,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "handleErrors": false
+              },
+              "mapper": {
+                "url": "BACKEND_URL/generate-publication",
+                "method": "post",
+                "headers": [
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "name": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "bodyType": "raw",
+                "contentType": "application/json",
+                "parseResponse": false,
+                "body": "{\n  \"source_url\": \"{{1.`SOURCE_URL`}}\"\n}"
+              },
+              "filter": null,
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": 0,
+                  "name": "4. HTTP POST /generate-publication"
+                },
+                "notes": "Replace BACKEND_URL before activation. Example: https://your-server.com"
+              },
+              "onerror": [
+                {
+                  "id": 8,
+                  "module": "google-sheets:updateRow",
+                  "version": 2,
+                  "parameters": {
+                    "__IMTCONN__": "GOOGLE_CONNECTION_ID"
+                  },
+                  "mapper": {
+                    "mode": "map",
+                    "values": {
+                      "STATUS": "ERROR",
+                      "ERROR": "HTTP {{4.error.statusCode}}: {{4.error.message}}",
+                      "UPDATED_AT": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"UTC\")}}"
+                    },
+                    "sheetId": "{{1.`__SHEET__`}}",
+                    "rowNumber": "{{1.`__ROW_NUMBER__`}}",
+                    "spreadsheetId": "SPREADSHEET_ID",
+                    "tableFirstRow": "A1:K1",
+                    "valueInputOption": "USER_ENTERED"
+                  },
+                  "filter": null,
+                  "metadata": {
+                    "designer": {
+                      "x": 900,
+                      "y": 250,
+                      "name": "8. Error: HTTP → STATUS = ERROR"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "module": "json:ParseJSON",
+              "version": 1,
+              "parameters": {},
+              "mapper": {
+                "json": "{{4.data}}"
+              },
+              "filter": null,
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": 0,
+                  "name": "5. Parse JSON response"
+                }
+              },
+              "onerror": [
+                {
+                  "id": 9,
+                  "module": "google-sheets:updateRow",
+                  "version": 2,
+                  "parameters": {
+                    "__IMTCONN__": "GOOGLE_CONNECTION_ID"
+                  },
+                  "mapper": {
+                    "mode": "map",
+                    "values": {
+                      "STATUS": "ERROR",
+                      "ERROR": "JSON parse failed: {{5.error.message}}",
+                      "UPDATED_AT": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"UTC\")}}"
+                    },
+                    "sheetId": "{{1.`__SHEET__`}}",
+                    "rowNumber": "{{1.`__ROW_NUMBER__`}}",
+                    "spreadsheetId": "SPREADSHEET_ID",
+                    "tableFirstRow": "A1:K1",
+                    "valueInputOption": "USER_ENTERED"
+                  },
+                  "filter": null,
+                  "metadata": {
+                    "designer": {
+                      "x": 1200,
+                      "y": 250,
+                      "name": "9. Error: JSON parse → STATUS = ERROR"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "module": "builtin:BasicRouter",
+              "version": 1,
+              "parameters": {},
+              "mapper": null,
+              "filter": null,
+              "metadata": {
+                "designer": {
+                  "x": 1500,
+                  "y": 0,
+                  "name": "6. Validate response"
+                }
+              },
+              "routes": [
+                {
+                  "flow": [
+                    {
+                      "id": 7,
+                      "module": "google-sheets:updateRow",
+                      "version": 2,
+                      "parameters": {
+                        "__IMTCONN__": "GOOGLE_CONNECTION_ID"
+                      },
+                      "mapper": {
+                        "mode": "map",
+                        "values": {
+                          "STATUS": "READY",
+                          "TITLE": "{{5.publication.title}}",
+                          "TELEGRAM_TEXT": "{{5.publication.telegram_text}}",
+                          "INSTAGRAM_TEXT": "{{5.publication.instagram_text}}",
+                          "REELS_SCRIPT": "{{5.publication.reels_script}}",
+                          "HASHTAGS": "{{join(5.publication.hashtags; \" \")}}",
+                          "ERROR": "",
+                          "UPDATED_AT": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"UTC\")}}"
+                        },
+                        "sheetId": "{{1.`__SHEET__`}}",
+                        "rowNumber": "{{1.`__ROW_NUMBER__`}}",
+                        "spreadsheetId": "SPREADSHEET_ID",
+                        "tableFirstRow": "A1:K1",
+                        "valueInputOption": "USER_ENTERED"
+                      },
+                      "filter": {
+                        "name": "status = success and publication fields present",
+                        "conditions": [
+                          [
+                            {
+                              "a": "{{5.status}}",
+                              "b": "success",
+                              "o": "text:equal"
+                            },
+                            {
+                              "a": "{{5.publication.title}}",
+                              "b": "",
+                              "o": "text:notequal"
+                            },
+                            {
+                              "a": "{{5.publication.telegram_text}}",
+                              "b": "",
+                              "o": "text:notequal"
+                            },
+                            {
+                              "a": "{{5.publication.instagram_text}}",
+                              "b": "",
+                              "o": "text:notequal"
+                            },
+                            {
+                              "a": "{{5.publication.reels_script}}",
+                              "b": "",
+                              "o": "text:notequal"
+                            }
+                          ]
+                        ]
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 1800,
+                          "y": 0,
+                          "name": "7. Update Sheet — STATUS = READY"
+                        },
+                        "notes": "Writes publication drafts from backend response."
+                      }
+                    }
+                  ]
+                },
+                {
+                  "flow": [
+                    {
+                      "id": 10,
+                      "module": "google-sheets:updateRow",
+                      "version": 2,
+                      "parameters": {
+                        "__IMTCONN__": "GOOGLE_CONNECTION_ID"
+                      },
+                      "mapper": {
+                        "mode": "map",
+                        "values": {
+                          "STATUS": "ERROR",
+                          "ERROR": "Response validation failed: status={{5.status}}; missing publication fields or backend returned error detail={{5.detail}}",
+                          "UPDATED_AT": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"UTC\")}}"
+                        },
+                        "sheetId": "{{1.`__SHEET__`}}",
+                        "rowNumber": "{{1.`__ROW_NUMBER__`}}",
+                        "spreadsheetId": "SPREADSHEET_ID",
+                        "tableFirstRow": "A1:K1",
+                        "valueInputOption": "USER_ENTERED"
+                      },
+                      "filter": null,
+                      "metadata": {
+                        "designer": {
+                          "x": 1800,
+                          "y": 250,
+                          "name": "10. Error: Validation → STATUS = ERROR"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu2.make.com",
+    "notes": "Build 4 MVP — Watch Row → PROCESSING → POST /generate-publication → Parse JSON → READY. Replace GOOGLE_CONNECTION_ID, SPREADSHEET_ID, SHEET_NAME, BACKEND_URL. Connect Google Sheets on import."
+  }
+}
