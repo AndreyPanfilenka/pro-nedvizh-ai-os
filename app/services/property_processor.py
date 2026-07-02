@@ -3,9 +3,14 @@ from __future__ import annotations
 from pydantic import ValidationError
 
 from app.models.property import Property
+from app.models.publication import Publication
 from app.models.source_content import SourceContent
 from app.services.content_extractor import ContentExtractor, ContentExtractorError
 from app.services.openrouter_client import OpenRouterClient, OpenRouterError
+from app.services.publication_generator import (
+    PublicationGenerator,
+    PublicationGeneratorError,
+)
 from app.services.url_fetcher import UrlFetcher, UrlFetcherError
 from app.utils.json_validator import JsonValidationError, validate_required_fields
 from app.utils.logger import get_logger
@@ -25,10 +30,12 @@ class PropertyProcessor:
         url_fetcher: UrlFetcher | None = None,
         content_extractor: ContentExtractor | None = None,
         openrouter_client: OpenRouterClient | None = None,
+        publication_generator: PublicationGenerator | None = None,
     ) -> None:
         self.url_fetcher = url_fetcher or UrlFetcher()
         self.content_extractor = content_extractor or ContentExtractor()
         self.openrouter_client = openrouter_client or OpenRouterClient()
+        self.publication_generator = publication_generator or PublicationGenerator()
 
     def extract_source_content(self, source_url: str) -> SourceContent:
         """Fetch a listing URL and extract readable page content."""
@@ -79,3 +86,23 @@ class PropertyProcessor:
             property_obj.quality_score,
         )
         return property_obj
+
+    def generate_publication(
+        self, source_url: str
+    ) -> tuple[Property, Publication]:
+        """
+        Process a listing URL and generate ready-to-publish social content.
+
+        1. Fetch and parse the listing into a Property
+        2. Generate Telegram, Instagram, Reels, and hashtags via OpenRouter
+        """
+        logger.info("Generating publication for URL: %s", source_url)
+
+        property_obj = self.process_url(source_url)
+
+        try:
+            publication = self.publication_generator.generate(property_obj)
+        except PublicationGeneratorError as exc:
+            raise PropertyProcessorError(str(exc)) from exc
+
+        return property_obj, publication
