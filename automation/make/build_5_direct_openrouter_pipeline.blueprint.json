@@ -1,0 +1,363 @@
+{
+  "name": "PRO Nedvizh Build 5 — Direct OpenRouter Pipeline",
+  "_placeholders": {
+    "GOOGLE_CONNECTION_ID": "Replace __IMTCONN__ in all Google Sheets modules after import",
+    "SPREADSHEET_ID": "Replace spreadsheetId in all Google Sheets modules",
+    "SHEET_NAME": "Replace sheetId in Watch Rows (default: INBOX)",
+    "OPENROUTER_API_KEY": "Replace in HTTP Authorization header — Bearer token from https://openrouter.ai/keys",
+    "SYSTEM_PROMPT": "Replace in HTTP body system message — paste escaped content from prompts/build_5_openrouter_prompt.md"
+  },
+  "flow": [
+    {
+      "id": 1,
+      "module": "google-sheets:watchRows",
+      "version": 2,
+      "parameters": {
+        "__IMTCONN__": "GOOGLE_CONNECTION_ID",
+        "from": "drive",
+        "mode": "select",
+        "limit": 1,
+        "sheetId": "SHEET_NAME",
+        "spreadsheetId": "SPREADSHEET_ID",
+        "tableFirstRow": "A1:K1",
+        "includesHeaders": true,
+        "valueRenderOption": "FORMATTED_VALUE",
+        "dateTimeRenderOption": "FORMATTED_STRING"
+      },
+      "mapper": {},
+      "filter": null,
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0,
+          "name": "1. Google Sheets Watch Rows"
+        },
+        "notes": "Polls SHEET_NAME for new or updated rows."
+      }
+    },
+    {
+      "id": 2,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "parameters": {},
+      "mapper": null,
+      "filter": null,
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0,
+          "name": "2. Router — STATUS = NEW"
+        }
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 3,
+              "module": "google-sheets:updateRow",
+              "version": 2,
+              "parameters": {
+                "__IMTCONN__": "GOOGLE_CONNECTION_ID"
+              },
+              "mapper": {
+                "mode": "map",
+                "values": {
+                  "STATUS": "PROCESSING",
+                  "UPDATED_AT": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"UTC\")}}"
+                },
+                "sheetId": "{{1.`__SHEET__`}}",
+                "rowNumber": "{{1.`__ROW_NUMBER__`}}",
+                "spreadsheetId": "SPREADSHEET_ID",
+                "tableFirstRow": "A1:K1",
+                "valueInputOption": "USER_ENTERED"
+              },
+              "filter": {
+                "name": "STATUS = NEW and SOURCE_URL present",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{1.`STATUS`}}",
+                      "b": "NEW",
+                      "o": "text:equal"
+                    },
+                    {
+                      "a": "{{1.`SOURCE_URL`}}",
+                      "b": "",
+                      "o": "text:notequal"
+                    }
+                  ]
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 0,
+                  "name": "3. Set STATUS = PROCESSING"
+                }
+              }
+            },
+            {
+              "id": 4,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "handleErrors": false
+              },
+              "mapper": {
+                "url": "https://openrouter.ai/api/v1/chat/completions",
+                "method": "post",
+                "headers": [
+                  {
+                    "name": "Authorization",
+                    "value": "Bearer OPENROUTER_API_KEY"
+                  },
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "name": "HTTP-Referer",
+                    "value": "https://pro-nedvizh.ai"
+                  },
+                  {
+                    "name": "X-Title",
+                    "value": "PRO Nedvizh Build 5"
+                  }
+                ],
+                "bodyType": "raw",
+                "contentType": "application/json",
+                "parseResponse": true,
+                "body": "{\n  \"model\": \"openai/gpt-4o-mini\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"SYSTEM_PROMPT\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Create publication drafts for this real estate listing URL: {{1.`SOURCE_URL`}}\"\n    }\n  ],\n  \"temperature\": 0.4,\n  \"response_format\": {\n    \"type\": \"json_object\"\n  }\n}"
+              },
+              "filter": null,
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": 0,
+                  "name": "4. HTTP POST OpenRouter"
+                },
+                "notes": "Replace OPENROUTER_API_KEY and SYSTEM_PROMPT before activation. System prompt: prompts/build_5_openrouter_prompt.md"
+              },
+              "onerror": [
+                {
+                  "id": 8,
+                  "module": "google-sheets:updateRow",
+                  "version": 2,
+                  "parameters": {
+                    "__IMTCONN__": "GOOGLE_CONNECTION_ID"
+                  },
+                  "mapper": {
+                    "mode": "map",
+                    "values": {
+                      "STATUS": "ERROR",
+                      "ERROR": "HTTP {{4.error.statusCode}}: {{4.error.message}}",
+                      "UPDATED_AT": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"UTC\")}}"
+                    },
+                    "sheetId": "{{1.`__SHEET__`}}",
+                    "rowNumber": "{{1.`__ROW_NUMBER__`}}",
+                    "spreadsheetId": "SPREADSHEET_ID",
+                    "tableFirstRow": "A1:K1",
+                    "valueInputOption": "USER_ENTERED"
+                  },
+                  "filter": null,
+                  "metadata": {
+                    "designer": {
+                      "x": 900,
+                      "y": 250,
+                      "name": "8. Error: HTTP → STATUS = ERROR"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "module": "json:ParseJSON",
+              "version": 1,
+              "parameters": {},
+              "mapper": {
+                "json": "{{4.data.choices[].message.content}}"
+              },
+              "filter": null,
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": 0,
+                  "name": "5. Parse AI JSON from OpenRouter"
+                },
+                "notes": "Parses publication JSON from choices[0].message.content"
+              },
+              "onerror": [
+                {
+                  "id": 9,
+                  "module": "google-sheets:updateRow",
+                  "version": 2,
+                  "parameters": {
+                    "__IMTCONN__": "GOOGLE_CONNECTION_ID"
+                  },
+                  "mapper": {
+                    "mode": "map",
+                    "values": {
+                      "STATUS": "ERROR",
+                      "ERROR": "JSON parse failed: {{5.error.message}}",
+                      "UPDATED_AT": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"UTC\")}}"
+                    },
+                    "sheetId": "{{1.`__SHEET__`}}",
+                    "rowNumber": "{{1.`__ROW_NUMBER__`}}",
+                    "spreadsheetId": "SPREADSHEET_ID",
+                    "tableFirstRow": "A1:K1",
+                    "valueInputOption": "USER_ENTERED"
+                  },
+                  "filter": null,
+                  "metadata": {
+                    "designer": {
+                      "x": 1200,
+                      "y": 250,
+                      "name": "9. Error: JSON parse → STATUS = ERROR"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "module": "builtin:BasicRouter",
+              "version": 1,
+              "parameters": {},
+              "mapper": null,
+              "filter": null,
+              "metadata": {
+                "designer": {
+                  "x": 1500,
+                  "y": 0,
+                  "name": "6. Validate publication JSON"
+                }
+              },
+              "routes": [
+                {
+                  "flow": [
+                    {
+                      "id": 7,
+                      "module": "google-sheets:updateRow",
+                      "version": 2,
+                      "parameters": {
+                        "__IMTCONN__": "GOOGLE_CONNECTION_ID"
+                      },
+                      "mapper": {
+                        "mode": "map",
+                        "values": {
+                          "STATUS": "READY",
+                          "TITLE": "{{5.title}}",
+                          "TELEGRAM_TEXT": "{{5.telegram_text}}",
+                          "INSTAGRAM_TEXT": "{{5.instagram_text}}",
+                          "REELS_SCRIPT": "{{5.reels_script}}",
+                          "HASHTAGS": "{{join(5.hashtags; \" \")}}",
+                          "ERROR": "",
+                          "UPDATED_AT": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"UTC\")}}"
+                        },
+                        "sheetId": "{{1.`__SHEET__`}}",
+                        "rowNumber": "{{1.`__ROW_NUMBER__`}}",
+                        "spreadsheetId": "SPREADSHEET_ID",
+                        "tableFirstRow": "A1:K1",
+                        "valueInputOption": "USER_ENTERED"
+                      },
+                      "filter": {
+                        "name": "Required publication fields present",
+                        "conditions": [
+                          [
+                            {
+                              "a": "{{5.title}}",
+                              "b": "",
+                              "o": "text:notequal"
+                            },
+                            {
+                              "a": "{{5.telegram_text}}",
+                              "b": "",
+                              "o": "text:notequal"
+                            },
+                            {
+                              "a": "{{5.instagram_text}}",
+                              "b": "",
+                              "o": "text:notequal"
+                            },
+                            {
+                              "a": "{{5.reels_script}}",
+                              "b": "",
+                              "o": "text:notequal"
+                            }
+                          ]
+                        ]
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 1800,
+                          "y": 0,
+                          "name": "7. Update Sheet — STATUS = READY"
+                        },
+                        "notes": "Writes publication drafts from OpenRouter AI response."
+                      }
+                    }
+                  ]
+                },
+                {
+                  "flow": [
+                    {
+                      "id": 10,
+                      "module": "google-sheets:updateRow",
+                      "version": 2,
+                      "parameters": {
+                        "__IMTCONN__": "GOOGLE_CONNECTION_ID"
+                      },
+                      "mapper": {
+                        "mode": "map",
+                        "values": {
+                          "STATUS": "ERROR",
+                          "ERROR": "Response validation failed: missing title, telegram_text, instagram_text, or reels_script in AI JSON",
+                          "UPDATED_AT": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"UTC\")}}"
+                        },
+                        "sheetId": "{{1.`__SHEET__`}}",
+                        "rowNumber": "{{1.`__ROW_NUMBER__`}}",
+                        "spreadsheetId": "SPREADSHEET_ID",
+                        "tableFirstRow": "A1:K1",
+                        "valueInputOption": "USER_ENTERED"
+                      },
+                      "filter": null,
+                      "metadata": {
+                        "designer": {
+                          "x": 1800,
+                          "y": 250,
+                          "name": "10. Error: Validation → STATUS = ERROR"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu2.make.com",
+    "notes": "Build 5 MVP — Watch Row → PROCESSING → OpenRouter chat/completions → Parse JSON → READY. No backend. Replace GOOGLE_CONNECTION_ID, SPREADSHEET_ID, SHEET_NAME, OPENROUTER_API_KEY, SYSTEM_PROMPT. Connect Google Sheets on import."
+  }
+}
