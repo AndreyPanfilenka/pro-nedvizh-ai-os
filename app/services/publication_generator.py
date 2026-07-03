@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Dict, Optional, Tuple
 
 import requests
 from pydantic import ValidationError
@@ -46,7 +46,7 @@ Return exactly this object shape:
   "hashtags": ["string"]
 }"""
 
-PUBLICATION_REQUIRED_FIELDS: tuple[str, ...] = (
+PUBLICATION_REQUIRED_FIELDS: Tuple[str, ...] = (
     "title",
     "telegram_text",
     "instagram_text",
@@ -64,10 +64,10 @@ class PublicationGenerator:
 
     def __init__(
         self,
-        api_key: str | None = None,
-        model: str | None = None,
-        base_url: str | None = None,
-        timeout: int | None = None,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> None:
         self.api_key = api_key if api_key is not None else OPENROUTER_API_KEY
         self.model = model or OPENROUTER_MODEL
@@ -96,7 +96,7 @@ class PublicationGenerator:
         logger.info("Publication generated: title=%r", publication.title)
         return publication
 
-    def _call_openrouter(self, property_obj: Property) -> dict[str, Any]:
+    def _call_openrouter(self, property_obj: Property) -> Dict[str, Any]:
         if not self.api_key:
             raise PublicationGeneratorError("OPENROUTER_API_KEY is not configured")
 
@@ -153,7 +153,7 @@ class PublicationGenerator:
 
         return self._extract_json_dict(body)
 
-    def _extract_json_dict(self, body: dict[str, Any]) -> dict[str, Any]:
+    def _extract_json_dict(self, body: Dict[str, Any]) -> Dict[str, Any]:
         choices = body.get("choices")
         if not choices:
             raise PublicationGeneratorError("OpenRouter response missing 'choices'")

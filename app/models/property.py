@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -25,19 +25,19 @@ class DealType(str, Enum):
 
 class Property(BaseModel):
     title: str
-    price: float | None = None
-    currency: str | None = None
-    city: str | None = None
-    district: str | None = None
-    address: str | None = None
-    rooms: int | None = None
-    floor: int | None = None
-    total_area: float | None = None
-    living_area: float | None = None
-    kitchen_area: float | None = None
+    price: Optional[float] = None
+    currency: Optional[str] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    address: Optional[str] = None
+    rooms: Optional[int] = None
+    floor: Optional[int] = None
+    total_area: Optional[float] = None
+    living_area: Optional[float] = None
+    kitchen_area: Optional[float] = None
     property_type: PropertyType
     deal_type: DealType
-    photos: list[str] = Field(default_factory=list)
+    photos: List[str] = Field(default_factory=list)
     description_ai: str
     telegram_text: str
     instagram_text: str

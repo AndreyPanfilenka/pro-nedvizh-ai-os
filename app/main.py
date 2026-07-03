@@ -1,3 +1,5 @@
+from typing import Dict
+
 from fastapi import FastAPI, HTTPException
 
 from app.config import APP_NAME
@@ -22,7 +24,7 @@ processor = PropertyProcessor()
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
+async def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 

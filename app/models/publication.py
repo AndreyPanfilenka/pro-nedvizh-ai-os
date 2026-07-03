@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import List, Literal
 
 from pydantic import BaseModel, HttpUrl
 
@@ -12,7 +12,7 @@ class Publication(BaseModel):
     telegram_text: str
     instagram_text: str
     reels_script: str
-    hashtags: list[str]
+    hashtags: List[str]
 
 
 class GeneratePublicationRequest(BaseModel):

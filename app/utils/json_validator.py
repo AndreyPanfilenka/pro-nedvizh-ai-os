@@ -1,4 +1,6 @@
-REQUIRED_FIELDS: tuple[str, ...] = (
+from typing import Tuple
+
+REQUIRED_FIELDS: Tuple[str, ...] = (
     "title",
     "price",
     "currency",

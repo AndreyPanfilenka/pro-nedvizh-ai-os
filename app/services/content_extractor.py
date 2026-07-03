@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import List, Set
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -109,9 +110,9 @@ class ContentExtractor:
 
         return ""
 
-    def _extract_images(self, soup: BeautifulSoup, base_url: str) -> list[str]:
-        seen: set[str] = set()
-        images: list[str] = []
+    def _extract_images(self, soup: BeautifulSoup, base_url: str) -> List[str]:
+        seen: Set[str] = set()
+        images: List[str] = []
 
         for tag in soup.find_all("img"):
             for attr in ("src", "data-src", "data-lazy-src", "data-original"):

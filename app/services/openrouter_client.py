@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Dict, Optional
 
 import requests
 
@@ -56,17 +56,17 @@ class OpenRouterClient:
 
     def __init__(
         self,
-        api_key: str | None = None,
-        model: str | None = None,
-        base_url: str | None = None,
-        timeout: int | None = None,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> None:
         self.api_key = api_key if api_key is not None else OPENROUTER_API_KEY
         self.model = model or OPENROUTER_MODEL
         self.base_url = (base_url or OPENROUTER_BASE_URL).rstrip("/")
         self.timeout = timeout or OPENROUTER_TIMEOUT
 
-    def parse_property_content(self, source: SourceContent) -> dict[str, Any]:
+    def parse_property_content(self, source: SourceContent) -> Dict[str, Any]:
         """
         Send extracted listing page content to OpenRouter and return the parsed property dict.
 
@@ -124,7 +124,7 @@ class OpenRouterClient:
 
         return self._extract_property_dict(body)
 
-    def _extract_property_dict(self, body: dict[str, Any]) -> dict[str, Any]:
+    def _extract_property_dict(self, body: Dict[str, Any]) -> Dict[str, Any]:
         choices = body.get("choices")
         if not choices:
             raise OpenRouterError("OpenRouter response missing 'choices'")

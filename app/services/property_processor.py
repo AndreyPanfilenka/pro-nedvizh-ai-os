@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional, Tuple
+
 from pydantic import ValidationError
 
 from app.models.property import Property
@@ -27,10 +29,10 @@ class PropertyProcessor:
 
     def __init__(
         self,
-        url_fetcher: UrlFetcher | None = None,
-        content_extractor: ContentExtractor | None = None,
-        openrouter_client: OpenRouterClient | None = None,
-        publication_generator: PublicationGenerator | None = None,
+        url_fetcher: Optional[UrlFetcher] = None,
+        content_extractor: Optional[ContentExtractor] = None,
+        openrouter_client: Optional[OpenRouterClient] = None,
+        publication_generator: Optional[PublicationGenerator] = None,
     ) -> None:
         self.url_fetcher = url_fetcher or UrlFetcher()
         self.content_extractor = content_extractor or ContentExtractor()
@@ -89,7 +91,7 @@ class PropertyProcessor:
 
     def generate_publication(
         self, source_url: str
-    ) -> tuple[Property, Publication]:
+    ) -> Tuple[Property, Publication]:
         """
         Process a listing URL and generate ready-to-publish social content.
 

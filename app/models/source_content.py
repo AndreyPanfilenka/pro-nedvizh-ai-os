@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import List, Literal
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -11,7 +11,7 @@ class SourceContent(BaseModel):
     title: str = ""
     description: str = ""
     text: str = ""
-    images: list[str] = Field(default_factory=list)
+    images: List[str] = Field(default_factory=list)
 
 
 class ExtractUrlRequest(BaseModel):
